@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-toastify';
-import { FiArrowLeft, FiUser, FiMail, FiPhone, FiCalendar, FiClock, FiGift, FiHome } from 'react-icons/fi';
+import { FiArrowLeft, FiUser, FiMail, FiPhone, FiCalendar, FiClock, FiGift, FiHome, FiMapPin } from 'react-icons/fi';
 import Link from 'next/link';
 
 import { getUserById } from '@/lib/api';
@@ -13,6 +13,7 @@ interface User {
   name: string;
   email: string;
   phone: string;
+  address: string;
   codeShop: string;
   spinsToday: number;
   lastSpinDate: string;
@@ -116,6 +117,14 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
               <div>
                 <p className="text-sm text-gray-500">Số điện thoại</p>
                 <p className="font-medium">{user.phone}</p>
+              </div>
+            </div>
+            
+            <div className="flex items-start">
+              <FiMapPin className="text-gray-500 mr-3 mt-1" />
+              <div>
+                <p className="text-sm text-gray-500">Địa chỉ</p>
+                <p className="font-medium">{user.address || 'Chưa cung cấp'}</p>
               </div>
             </div>
             

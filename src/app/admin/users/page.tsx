@@ -13,6 +13,7 @@ interface User {
   name: string;
   email: string;
   phone: string;
+  address: string;
   codeShop: string;
   spinsToday: number;
   lastSpinDate: string;
@@ -58,6 +59,7 @@ export default function UsersPage() {
           'Họ tên': user.name,
           'Email': user.email,
           'Số điện thoại': user.phone,
+          'Địa chỉ': user.address || 'Chưa cung cấp',
           'Mã cửa hàng': user.codeShop || 'Không có',
           'Lượt quay hôm nay': user.spinsToday,
           'Quay lần cuối': new Date(user.lastSpinDate).toLocaleString('vi-VN'),
@@ -80,6 +82,7 @@ export default function UsersPage() {
     user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.phone.includes(searchTerm) ||
+    (user.address && user.address.toLowerCase().includes(searchTerm.toLowerCase())) ||
     (user.codeShop && user.codeShop.toLowerCase().includes(searchTerm.toLowerCase()))
   );
   
@@ -106,7 +109,7 @@ export default function UsersPage() {
             id="search"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Tìm theo tên, email, số điện thoại hoặc mã cửa hàng..."
+            placeholder="Tìm theo tên, email, số điện thoại, địa chỉ hoặc mã cửa hàng..."
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
@@ -125,6 +128,9 @@ export default function UsersPage() {
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Số điện thoại
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Địa chỉ
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Mã cửa hàng
@@ -168,6 +174,11 @@ export default function UsersPage() {
                         {user.phone}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {user.address ? (
+                          user.address.length > 30 ? `${user.address.substring(0, 30)}...` : user.address
+                        ) : 'Chưa cung cấp'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {user.codeShop || 'Không có'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -191,7 +202,7 @@ export default function UsersPage() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
+                    <td colSpan={8} className="px-6 py-4 text-center text-sm text-gray-500">
                       {searchTerm 
                         ? 'Không tìm thấy người dùng phù hợp'
                         : 'Chưa có người dùng nào'}

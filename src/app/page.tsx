@@ -20,6 +20,7 @@ interface User {
   name: string;
   email: string;
   phone: string;
+  address: string;
   codeShop: string;
   spinsToday: number;
 }
@@ -71,6 +72,7 @@ export default function HomePage() {
       const checkResponse = await checkUser({ 
         email: formData.email, 
         phone: formData.phone,
+        address: formData.address,
         codeShop: formData.codeShop
       });
       
@@ -254,6 +256,7 @@ export default function HomePage() {
           prize={spinResult.spin.prize}
           isWin={spinResult.isWin}
           remainingSpins={remainingSpins}
+          user={user}
         />
       )}
       

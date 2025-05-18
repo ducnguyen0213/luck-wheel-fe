@@ -4,6 +4,15 @@ import { Fragment, useRef, useEffect, useState } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import confetti from 'canvas-confetti';
 
+interface User {
+  _id: string;
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+  codeShop: string;
+}
+
 interface Prize {
   _id: string;
   name: string;
@@ -17,6 +26,7 @@ interface ResultModalProps {
   prize: Prize | null;
   isWin: boolean;
   remainingSpins: number;
+  user: User | null;
 }
 
 const ResultModal: React.FC<ResultModalProps> = ({
@@ -25,6 +35,7 @@ const ResultModal: React.FC<ResultModalProps> = ({
   prize,
   isWin,
   remainingSpins,
+  user
 }) => {
   const cancelButtonRef = useRef(null);
   const [showImage, setShowImage] = useState(false);
@@ -211,130 +222,186 @@ const ResultModal: React.FC<ResultModalProps> = ({
               </button>
               
               <div className="px-5 pt-6 pb-5 sm:p-8">
-                <div className="sm:flex sm:items-start">
-                  <div className="mt-3 text-center sm:mt-0 sm:text-left w-full">
-                    <Dialog.Title
-                      as="h3"
-                      className={`title-text text-3xl font-extrabold text-center mb-5 ${animationClass} ${
-                        isWin 
-                        ? 'bg-clip-text text-transparent bg-gradient-to-r from-emerald-500 via-green-500 to-teal-500' 
-                        : 'text-gray-900'
-                      }`}
+                {isWin && prize ? (
+                  <div className="w-full flex flex-col items-center text-center">
+                    {/* Tiêu đề khi thắng */}
+                    <h1 className={`title-text text-5xl font-extrabold mb-6 ${animationClass} text-center text-green-600 drop-shadow-md tracking-wide`}>
+                      CHÚC MỪNG!
+                    </h1>
+
+                    {/* Hình ảnh phần thưởng */}
+                    <Transition
+                      as="div"
+                      show={showImage}
+                      enter="transition ease-out duration-500 transform"
+                      enterFrom="opacity-0 scale-50 rotate-12"
+                      enterTo="opacity-100 scale-100 rotate-0"
+                      leave="transition ease-in duration-200"
+                      leaveFrom="opacity-100 scale-100"
+                      leaveTo="opacity-0 scale-50"
+                      className="mb-6 relative mx-auto"
                     >
-                      {isWin ? '🎉 Chúc mừng! 🎉' : 'Rất tiếc!'}
-                    </Dialog.Title>
-                    <div className="mt-4 flex flex-col items-center">
-                      {isWin && prize ? (
-                        <>
-                          <Transition
-                            as="div"
-                            show={showImage}
-                            enter="transition ease-out duration-500 transform"
-                            enterFrom="opacity-0 scale-50 rotate-12"
-                            enterTo="opacity-100 scale-100 rotate-0"
-                            leave="transition ease-in duration-200"
-                            leaveFrom="opacity-100 scale-100"
-                            leaveTo="opacity-0 scale-50"
-                            className="mb-6 w-48 h-48 relative"
-                          >
-                            {prize.imageUrl ? (
-                              <div className="relative w-full h-full">
-                                <div className="absolute inset-0 rounded-full bg-gradient-to-br from-yellow-300 to-amber-500 opacity-50 animate-pulse blur-xl"></div>
-                                <img
-                                  src={prize.imageUrl}
-                                  alt={prize.name}
-                                  className="relative z-10 w-full h-full object-contain filter drop-shadow-xl"
-                                />
-                              </div>
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center bg-gradient-to-r from-amber-400 to-yellow-500 rounded-full shadow-lg relative overflow-hidden">
-                                <div className="absolute inset-0 bg-gradient-to-tr from-yellow-300/0 to-yellow-300/50 animate-pulse"></div>
-                                <span className="text-7xl relative z-10 animate-bounce" style={{ animationDuration: '2s' }}>🎁</span>
-                              </div>
-                            )}
-                          </Transition>
-                          
-                          <Transition
-                            as="div"
-                            show={showResult}
-                            enter="transition ease-out duration-500"
-                            enterFrom="opacity-0 translate-y-4"
-                            enterTo="opacity-100 translate-y-0"
-                            leave="transition ease-in duration-200"
-                            leaveFrom="opacity-100"
-                            leaveTo="opacity-0"
-                            className="text-center w-full"
-                          >
-                            <p className="text-2xl font-bold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-green-600 to-emerald-600">{prize.name}</p>
-                            {prize.description && (
-                              <p className="text-sm text-gray-600 mb-6">{prize.description}</p>
-                            )}
-                            <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl relative mt-4 shadow-sm backdrop-blur-sm">
-                              <div className="flex items-center">
-                                <svg className="w-5 h-5 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path>
+                      <div className="relative max-w-[240px] mx-auto">
+                        <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-yellow-300 to-amber-500 opacity-60 animate-pulse blur-xl"></div>
+                        {prize.imageUrl ? (
+                          <img
+                            src={prize.imageUrl}
+                            alt={prize.name}
+                            className="relative z-10 w-full h-auto object-contain filter drop-shadow-xl rounded-lg border-2 border-yellow-300/50"
+                          />
+                        ) : (
+                          <div className="w-48 h-48 mx-auto flex items-center justify-center bg-gradient-to-r from-amber-400 to-yellow-500 rounded-full shadow-lg relative overflow-hidden">
+                            <div className="absolute inset-0 bg-gradient-to-tr from-yellow-300/0 to-yellow-300/50 animate-pulse"></div>
+                            <span className="text-8xl relative z-10 animate-bounce" style={{ animationDuration: '2s' }}>🎁</span>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Tên và mô tả phần thưởng */}
+                      <div className="text-center mt-5">
+                        <p className="text-4xl font-bold mb-2 text-green-600 drop-shadow-sm">{prize.name}</p>
+                        {prize.description && (
+                          <p className="text-md text-gray-600 italic">{prize.description}</p>
+                        )}
+                      </div>
+                    </Transition>
+                    
+                    {/* Thông tin người trúng */}
+                    <Transition
+                      as="div"
+                      show={showResult}
+                      enter="transition ease-out duration-500"
+                      enterFrom="opacity-0 translate-y-4"
+                      enterTo="opacity-100 translate-y-0"
+                      leave="transition ease-in duration-200"
+                      leaveFrom="opacity-100"
+                      leaveTo="opacity-0"
+                      className="w-full mt-8"
+                    >
+                      {user && (
+                        <div className="w-full bg-blue-50 border-2 border-blue-200 rounded-lg p-5 text-left shadow-md">
+                          <p className="font-bold text-blue-800 text-center text-xl mb-4 pb-2 border-b border-blue-200">Thông tin người trúng</p>
+                          <div className="grid grid-cols-1 gap-3 text-blue-800">
+                            <p className="flex items-center">
+                              <span className="font-semibold min-w-32 flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                 </svg>
-                                <div>
-                                  <strong className="font-bold text-green-700">Thành công!</strong>
-                                  <span className="block sm:inline ml-1">Phần thưởng đã được lưu vào hệ thống!</span>
-                                </div>
-                              </div>
-                            </div>
-                          </Transition>
-                        </>
-                      ) : (
-                        <div className="mb-4 flex flex-col items-center">
-                          <Transition
-                            as="div"
-                            show={showImage}
-                            enter="transition ease-out duration-300 transform"
-                            enterFrom="opacity-0 rotate-180"
-                            enterTo="opacity-100 rotate-0"
-                            leave="transition ease-in duration-200"
-                            leaveFrom="opacity-100"
-                            leaveTo="opacity-0"
-                            className="w-32 h-32 flex items-center justify-center bg-gradient-to-r from-gray-200 to-gray-300 rounded-full mb-6 shadow-inner"
-                          >
-                            <span className="text-6xl">😔</span>
-                          </Transition>
-                          
-                          <Transition
-                            as="div"
-                            show={showResult}
-                            enter="transition ease-out duration-300"
-                            enterFrom="opacity-0 translate-y-4"
-                            enterTo="opacity-100 translate-y-0"
-                            leave="transition ease-in duration-200"
-                            leaveFrom="opacity-100"
-                            leaveTo="opacity-0"
-                            className="text-center"
-                          >
-                            <p className="text-xl font-medium mb-4 text-gray-700">Bạn chưa may mắn lần này. Hãy thử lại!</p>
-                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-blue-700">
-                              <p className="text-sm">Đừng nản lòng, có thể lần sau bạn sẽ gặp may hơn!</p>
-                            </div>
-                          </Transition>
+                                Người chơi:
+                              </span>
+                              <span className="font-medium">{user.name}</span>
+                            </p>
+                            <p className="flex items-center">
+                              <span className="font-semibold min-w-32 flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                </svg>
+                                SĐT:
+                              </span>
+                              <span className="font-medium">{user.phone}</span>
+                            </p>
+                            <p className="flex items-start">
+                              <span className="font-semibold min-w-32 flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                Địa chỉ:
+                              </span>
+                              <span className="font-medium">{user.address || "Chưa cung cấp"}</span>
+                            </p>
+                            <p className="flex items-center">
+                              <span className="font-semibold min-w-32 flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                </svg>
+                                Mã cửa hàng:
+                              </span>
+                              <span className="font-medium">{user.codeShop}</span>
+                            </p>
+                            <p className="flex items-center">
+                              <span className="font-semibold min-w-32 flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
+                                </svg>
+                                Phần thưởng:
+                              </span>
+                              <span className="font-medium text-green-700">{prize.name}</span>
+                            </p>
+                          </div>
                         </div>
                       )}
-                      
-                      <p className={`mt-5 text-sm bg-blue-50 py-2.5 px-5 rounded-full inline-flex items-center ${
-                        remainingSpins > 0 ? 'text-blue-700' : 'text-red-600'
-                      }`}>
-                        <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                        Số lượt quay còn lại: <span className="font-bold ml-1">{remainingSpins}</span>
-                      </p>
-                    </div>
+
+                      {/* Thông báo thành công */}
+                      <div className="mt-5 bg-green-50 border border-green-200 rounded-lg p-4 text-green-700 shadow-sm">
+                        <div className="flex items-center">
+                          <svg className="w-6 h-6 mr-3 text-green-500" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path>
+                          </svg>
+                          <div className="text-center w-full">
+                            <span className="font-bold text-lg">Thành công!</span>
+                            <span className="block">Phần thưởng đã được lưu vào hệ thống!</span>
+                          </div>
+                        </div>
+                      </div>
+                    </Transition>
                   </div>
-                </div>
+                ) : (
+                  <div className="w-full flex flex-col items-center">
+                    {/* Tiêu đề khi thua */}
+                    <h1 className={`title-text text-4xl font-extrabold text-center mb-6 ${animationClass} text-gray-700`}>
+                      Rất tiếc!
+                    </h1>
+                    
+                    <Transition
+                      as="div"
+                      show={showImage}
+                      enter="transition ease-out duration-300 transform"
+                      enterFrom="opacity-0 rotate-180"
+                      enterTo="opacity-100 rotate-0"
+                      leave="transition ease-in duration-200"
+                      leaveFrom="opacity-100"
+                      leaveTo="opacity-0"
+                      className="w-36 h-36 flex items-center justify-center bg-gradient-to-r from-gray-200 to-gray-300 rounded-full mb-6 shadow-inner"
+                    >
+                      <span className="text-7xl">😔</span>
+                    </Transition>
+                    
+                    <Transition
+                      as="div"
+                      show={showResult}
+                      enter="transition ease-out duration-300"
+                      enterFrom="opacity-0 translate-y-4"
+                      enterTo="opacity-100 translate-y-0"
+                      leave="transition ease-in duration-200"
+                      leaveFrom="opacity-100"
+                      leaveTo="opacity-0"
+                      className="text-center w-full"
+                    >
+                      <p className="text-xl font-medium mb-4 text-gray-700">Bạn chưa may mắn lần này. Hãy thử lại!</p>
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-blue-700">
+                        <p className="text-sm">Đừng nản lòng, có thể lần sau bạn sẽ gặp may hơn!</p>
+                      </div>
+                    </Transition>
+                  </div>
+                )}
+                
+                {/* Thông tin lượt quay còn lại */}
+                <p className={`mt-6 text-md bg-blue-50 py-3 px-6 rounded-full inline-flex items-center shadow-sm ${
+                  remainingSpins > 0 ? 'text-blue-700' : 'text-red-600'
+                }`}>
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                  Số lượt quay còn lại: <span className="font-bold ml-1.5">{remainingSpins}</span>
+                </p>
               </div>
               
               <div className="bg-gray-50/80 backdrop-blur-sm px-5 py-4 sm:px-6 sm:flex sm:flex-row-reverse gap-2">
                 {remainingSpins > 0 ? (
                   <button
                     type="button"
-                    className="w-full inline-flex justify-center rounded-lg border border-transparent shadow-sm px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-base font-medium text-white hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm transition-all hover:shadow-md transform hover:scale-105"
+                    className="w-full inline-flex justify-center rounded-lg border border-transparent shadow-sm px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-base font-medium text-white hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm transition-all hover:shadow-md transform hover:scale-105"
                     onClick={onClose}
                   >
                     Quay tiếp
@@ -342,7 +409,7 @@ const ResultModal: React.FC<ResultModalProps> = ({
                 ) : (
                   <button
                     type="button"
-                    className="w-full inline-flex justify-center rounded-lg border border-transparent shadow-sm px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-base font-medium text-white hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm transition-all hover:shadow-md transform hover:scale-105"
+                    className="w-full inline-flex justify-center rounded-lg border border-transparent shadow-sm px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-base font-medium text-white hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm transition-all hover:shadow-md transform hover:scale-105"
                     onClick={onClose}
                   >
                     Đóng
@@ -352,7 +419,7 @@ const ResultModal: React.FC<ResultModalProps> = ({
                 {remainingSpins > 0 && (
                   <button
                     type="button"
-                    className="mt-3 w-full inline-flex justify-center rounded-lg border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:w-auto sm:text-sm"
+                    className="mt-3 w-full inline-flex justify-center rounded-lg border border-gray-300 shadow-sm px-5 py-3 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:w-auto sm:text-sm"
                     onClick={onClose}
                     ref={cancelButtonRef}
                   >

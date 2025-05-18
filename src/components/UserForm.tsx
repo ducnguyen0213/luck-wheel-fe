@@ -4,12 +4,19 @@ import React from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { FaUser, FaEnvelope, FaPhone, FaStore } from 'react-icons/fa';
+import { FaUser, FaEnvelope, FaPhone, FaStore, FaMapMarkerAlt } from 'react-icons/fa';
 
 const userSchema = z.object({
-  name: z.string().min(3, 'Họ tên phải có ít nhất 3 ký tự'),
+  name: z.string()
+    .min(3, 'Họ tên phải có ít nhất 3 ký tự')
+    .max(100, 'Họ tên không được vượt quá 100 ký tự')
+    .regex(/^[A-Za-zÀ-ỹ\s\-']+$/, 'Họ tên chỉ được chứa chữ cái, dấu cách và dấu gạch nối')
+    .refine(val => val.trim().includes(' '), {
+      message: 'Vui lòng nhập đầy đủ họ và tên'
+    }),
   email: z.string().email('Email không hợp lệ'),
   phone: z.string().regex(/^(0|\+84)[3|5|7|8|9][0-9]{8}$/, 'Số điện thoại không hợp lệ'),
+  address: z.string().min(5, 'Địa chỉ phải có ít nhất 5 ký tự').max(500, 'Địa chỉ không được vượt quá 500 ký tự'),
   codeShop: z.string().min(1, 'Mã cửa hàng không được để trống'),
 });
 
@@ -32,6 +39,7 @@ const UserForm: React.FC<UserFormProps> = ({ onSubmit, defaultValues, isSubmitti
       name: '',
       email: '',
       phone: '',
+      address: '',
       codeShop: '',
     },
   });
@@ -73,32 +81,6 @@ const UserForm: React.FC<UserFormProps> = ({ onSubmit, defaultValues, isSubmitti
           </div>
 
           <div className="group">
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1 group-focus-within:text-indigo-600 transition-colors">
-              Email
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 group-focus-within:text-indigo-500">
-                <FaEnvelope />
-              </div>
-              <input
-                id="email"
-                type="email"
-                {...register('email')}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all hover:border-gray-400 outline-none"
-                placeholder="example@email.com"
-              />
-            </div>
-            {errors.email && (
-              <p className="mt-1 text-sm text-red-600 flex items-center">
-                <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd"></path>
-                </svg>
-                {errors.email.message}
-              </p>
-            )}
-          </div>
-
-          <div className="group">
             <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1 group-focus-within:text-indigo-600 transition-colors">
               Số điện thoại
             </label>
@@ -120,6 +102,58 @@ const UserForm: React.FC<UserFormProps> = ({ onSubmit, defaultValues, isSubmitti
                   <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd"></path>
                 </svg>
                 {errors.phone.message}
+              </p>
+            )}
+          </div>
+
+          <div className="group">
+            <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1 group-focus-within:text-indigo-600 transition-colors">
+              Địa chỉ
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 group-focus-within:text-indigo-500">
+                <FaMapMarkerAlt />
+              </div>
+              <input
+                id="address"
+                type="text"
+                {...register('address')}
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all hover:border-gray-400 outline-none"
+                placeholder="Nhập địa chỉ của bạn"
+              />
+            </div>
+            {errors.address && (
+              <p className="mt-1 text-sm text-red-600 flex items-center">
+                <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd"></path>
+                </svg>
+                {errors.address.message}
+              </p>
+            )}
+          </div>
+
+          <div className="group">
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1 group-focus-within:text-indigo-600 transition-colors">
+              Email
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 group-focus-within:text-indigo-500">
+                <FaEnvelope />
+              </div>
+              <input
+                id="email"
+                type="email"
+                {...register('email')}
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all hover:border-gray-400 outline-none"
+                placeholder="example@email.com"
+              />
+            </div>
+            {errors.email && (
+              <p className="mt-1 text-sm text-red-600 flex items-center">
+                <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd"></path>
+                </svg>
+                {errors.email.message}
               </p>
             )}
           </div>
