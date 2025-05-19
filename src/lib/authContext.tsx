@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { getAdminProfile } from './api';
+import { getAdminProfile, refreshAccessToken, logoutAdmin } from './api';
 
 interface Admin {
   id: string;
@@ -15,6 +15,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (token: string, admin: Admin) => void;
   logout: () => void;
+  refreshToken: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -24,6 +25,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
+  // Hàm để refresh token
+  const refreshToken = async (): Promise<boolean> => {
+    try {
+      await refreshAccessToken();
+      return true;
+    } catch (error) {
+      console.error('Failed to refresh token:', error);
+      return false;
+    }
+  };
+
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -31,27 +43,57 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         
         if (token) {
           try {
+            // Thử lấy thông tin profile với token hiện tại
             const { data } = await getAdminProfile();
             if (data && data.success) {
               setAdmin(data.data);
               setIsAuthenticated(true);
             } else {
-              if (typeof window !== 'undefined') {
-                localStorage.removeItem('token');
+              // Nếu không thành công, thử refresh token
+              const refreshed = await refreshToken();
+              if (refreshed) {
+                // Lấy lại thông tin profile sau khi refresh token
+                const refreshedProfile = await getAdminProfile();
+                if (refreshedProfile.data && refreshedProfile.data.success) {
+                  setAdmin(refreshedProfile.data.data);
+                  setIsAuthenticated(true);
+                } else {
+                  handleLogout();
+                }
+              } else {
+                handleLogout();
               }
             }
-          } catch (error) {
+          } catch (error: any) {
             console.error('Error checking auth:', error);
-            if (typeof window !== 'undefined') {
-              localStorage.removeItem('token');
+            
+            // Nếu lỗi 401, thử refresh token
+            if (error.response?.status === 401) {
+              const refreshed = await refreshToken();
+              if (refreshed) {
+                // Lấy lại thông tin profile sau khi refresh token
+                try {
+                  const refreshedProfile = await getAdminProfile();
+                  if (refreshedProfile.data && refreshedProfile.data.success) {
+                    setAdmin(refreshedProfile.data.data);
+                    setIsAuthenticated(true);
+                  } else {
+                    handleLogout();
+                  }
+                } catch (profileError) {
+                  handleLogout();
+                }
+              } else {
+                handleLogout();
+              }
+            } else {
+              handleLogout();
             }
           }
         }
       } catch (error) {
         console.error('Auth error:', error);
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('token');
-        }
+        handleLogout();
       } finally {
         setIsLoading(false);
       }
@@ -59,6 +101,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     checkAuth();
   }, []);
+
+  const handleLogout = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('token');
+    }
+    setAdmin(null);
+    setIsAuthenticated(false);
+  };
 
   const login = (token: string, adminData: Admin) => {
     if (typeof window !== 'undefined') {
@@ -68,12 +118,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsAuthenticated(true);
   };
 
-  const logout = () => {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('token');
+  const logout = async () => {
+    try {
+      // Gọi API logout để xóa refresh token cookie
+      await logoutAdmin();
+    } catch (error) {
+      console.error('Error during logout:', error);
+    } finally {
+      handleLogout();
     }
-    setAdmin(null);
-    setIsAuthenticated(false);
   };
 
   return (
@@ -84,6 +137,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         isAuthenticated,
         login,
         logout,
+        refreshToken,
       }}
     >
       {children}

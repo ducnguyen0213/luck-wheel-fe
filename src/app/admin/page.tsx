@@ -15,7 +15,14 @@ export default function AdminLoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [shouldRedirect, setShouldRedirect] = useState(false);
   const router = useRouter();
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, isLoading: authLoading } = useAuth();
+
+  useEffect(() => {
+    // Nếu đã xác thực, chuyển hướng về dashboard
+    if (isAuthenticated && !authLoading) {
+      router.push('/admin/dashboard');
+    }
+  }, [isAuthenticated, authLoading, router]);
 
   useEffect(() => {
     // Kiểm tra xác thực và chuyển hướng trong useEffect để tránh lỗi render
@@ -51,6 +58,18 @@ export default function AdminLoginPage() {
       setIsLoading(false);
     }
   };
+
+  // Nếu đang kiểm tra trạng thái xác thực, hiển thị trạng thái đang tải
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
+        <div className="flex items-center">
+          <div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-indigo-600 rounded-full mr-3"></div>
+          <span className="text-lg font-medium text-gray-700">Đang xác thực...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 py-12 px-4 sm:px-6 lg:px-8">

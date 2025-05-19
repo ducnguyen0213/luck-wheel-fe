@@ -7,6 +7,7 @@ import Link from 'next/link';
 import * as XLSX from 'xlsx';
 
 import { getAllSpins } from '@/lib/api';
+import Pagination from '@/components/Pagination';
 
 interface Spin {
   _id: string;
@@ -15,13 +16,27 @@ interface Spin {
     name: string;
     email: string;
     phone: string;
+    address?: string;
+    codeShop?: string;
   };
   prize: {
     _id: string;
     name: string;
-  };
+    description?: string;
+    originalQuantity?: number;
+    remainingQuantity?: number;
+  } | null;
   isWin: boolean;
   createdAt: string;
+}
+
+interface PaginationData {
+  page: number;
+  limit: number;
+  totalPages: number;
+  totalItems: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
 }
 
 export default function SpinsPage() {
@@ -32,19 +47,37 @@ export default function SpinsPage() {
     startDate: '',
     endDate: '',
   });
+  const [pagination, setPagination] = useState<PaginationData>({
+    page: 1,
+    limit: 10,
+    totalPages: 1,
+    totalItems: 0,
+    hasNextPage: false,
+    hasPrevPage: false
+  });
   
   useEffect(() => {
     fetchSpins();
   }, [dateRange]);
   
-  const fetchSpins = async () => {
+  const fetchSpins = async (page = 1) => {
     try {
       setIsLoading(true);
-      const params = dateRange.startDate ? dateRange : undefined;
+      const params = {
+        ...(dateRange.startDate && { startDate: dateRange.startDate }),
+        ...(dateRange.endDate && { endDate: dateRange.endDate }),
+        page,
+        limit: 10
+      };
+      
       const response = await getAllSpins(params);
       
       if (response.data.success) {
         setSpins(response.data.data);
+        
+        if (response.data.pagination) {
+          setPagination(response.data.pagination);
+        }
       }
     } catch (error) {
       toast.error('Lỗi khi tải lịch sử quay');
@@ -67,6 +100,20 @@ export default function SpinsPage() {
     });
   };
   
+  const handlePageChange = (page: number) => {
+    fetchSpins(page);
+  };
+
+  const handleItemsPerPageChange = (newLimit: number) => {
+    // Cập nhật limit trong state pagination
+    setPagination(prev => ({
+      ...prev,
+      limit: newLimit
+    }));
+    // Gọi API để fetch lại dữ liệu với limit mới, bắt đầu từ trang 1
+    fetchSpins(1);
+  };
+  
   const handleExport = () => {
     try {
       setIsExporting(true);
@@ -78,7 +125,9 @@ export default function SpinsPage() {
         'Người dùng': spin.user.name,
         'Email': spin.user.email,
         'Số điện thoại': spin.user.phone,
-        'Phần thưởng': spin.prize.name,
+        'Địa chỉ': spin.user.address || 'Chưa cung cấp',
+        'Mã cửa hàng': spin.user.codeShop || 'Không có',
+        'Phần thưởng': spin.prize ? spin.prize.name : 'Không trúng',
         'Kết quả': spin.isWin ? 'Trúng thưởng' : 'Không trúng',
         'Thời gian': new Date(spin.createdAt).toLocaleString('vi-VN')
       })));
@@ -149,64 +198,98 @@ export default function SpinsPage() {
       ) : (
         <div className="bg-white rounded-lg shadow overflow-hidden">
           {spins.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Thời gian
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Người dùng
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Phần thưởng
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Kết quả
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {spins.map((spin) => (
-                    <tr key={spin._id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(spin.createdAt).toLocaleString('vi-VN')}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="flex-shrink-0 h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center">
-                            <span className="text-blue-600 font-bold">
-                              {spin.user.name.charAt(0).toUpperCase()}
-                            </span>
-                          </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">
-                              {spin.user.name}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              {spin.user.email}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {spin.prize.name}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          spin.isWin 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {spin.isWin ? 'Trúng thưởng' : 'Không trúng'}
-                        </span>
-                      </td>
+            <>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Thời gian
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Người dùng
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Số điện thoại
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Địa chỉ
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Mã cửa hàng
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Phần thưởng
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Kết quả
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {spins.map((spin) => (
+                      <tr key={spin._id}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {new Date(spin.createdAt).toLocaleString('vi-VN')}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="flex-shrink-0 h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center">
+                              <span className="text-blue-600 font-bold">
+                                {spin.user.name.charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                            <div className="ml-4">
+                              <div className="text-sm font-medium text-gray-900">
+                                {spin.user.name}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {spin.user.email}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {spin.user.phone}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {spin.user.address ? (
+                            spin.user.address.length > 30 ? `${spin.user.address.substring(0, 30)}...` : spin.user.address
+                          ) : 'Chưa cung cấp'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {spin.user.codeShop || 'Không có'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {spin.prize ? spin.prize.name : 'Không có'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            spin.isWin 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {spin.isWin ? 'Trúng thưởng' : 'Không trúng'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              
+              {pagination.totalPages > 1 && (
+                <div className="py-2">
+                  <Pagination
+                    currentPage={pagination.page}
+                    totalPages={pagination.totalPages}
+                    onPageChange={handlePageChange}
+                    totalItems={pagination.totalItems}
+                    itemsPerPage={pagination.limit}
+                  />
+                </div>
+              )}
+            </>
           ) : (
             <div className="text-center py-10 text-gray-500">
               Không có lượt quay nào trong khoảng thời gian đã chọn

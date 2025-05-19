@@ -10,7 +10,7 @@ const userSchema = z.object({
   name: z.string()
     .min(3, 'Họ tên phải có ít nhất 3 ký tự')
     .max(100, 'Họ tên không được vượt quá 100 ký tự')
-    .regex(/^[A-Za-zÀ-ỹ\s\-']+$/, 'Họ tên chỉ được chứa chữ cái, dấu cách và dấu gạch nối')
+    .regex(/^[A-Za-zÀ-ỹ\s]+$/, 'Họ tên chỉ được chứa chữ cái tiếng Việt')
     .refine(val => val.trim().includes(' '), {
       message: 'Vui lòng nhập đầy đủ họ và tên'
     }),
