@@ -104,7 +104,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const handleLogout = () => {
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('token');
+      try {
+        localStorage.removeItem('token');
+        console.log('Token removed from localStorage');
+      } catch (error) {
+        console.error('Error removing token from localStorage:', error);
+      }
     }
     setAdmin(null);
     setIsAuthenticated(false);
@@ -112,7 +117,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = (token: string, adminData: Admin) => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('token', token);
+      try {
+        localStorage.setItem('token', token);
+        console.log('Token saved:', token);
+      } catch (error) {
+        console.error('Error saving token to localStorage:', error);
+      }
     }
     setAdmin(adminData);
     setIsAuthenticated(true);

@@ -45,9 +45,18 @@ export default function AdminLoginPage() {
       const response = await loginAdmin({ email, password });
       
       if (response.data.success) {
-        toast.success('Đăng nhập thành công');
+        // Lưu token trước, sau đó mới gọi login
+        localStorage.setItem('token', response.data.token);
+        
+        // Sau đó gọi login với token và thông tin admin
         login(response.data.token, response.data.admin);
-        setShouldRedirect(true);
+        
+        toast.success('Đăng nhập thành công');
+        
+        // Đợi một chút để đảm bảo dữ liệu đã được cập nhật
+        setTimeout(() => {
+          router.push('/admin/dashboard');
+        }, 500);
       } else {
         toast.error('Đăng nhập thất bại');
       }
