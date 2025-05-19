@@ -43,13 +43,15 @@ export default function AdminLoginPage() {
     
     try {
       const response = await loginAdmin({ email, password });
+      console.log('Phản hồi đăng nhập:', response.data);
       
       if (response.data.success) {
+        console.log('Token nhận được:', response.data.accessToken);
         // Lưu token trước, sau đó mới gọi login
-        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('token', response.data.accessToken);
         
         // Sau đó gọi login với token và thông tin admin
-        login(response.data.token, response.data.admin);
+        login(response.data.accessToken, response.data.admin);
         
         toast.success('Đăng nhập thành công');
         

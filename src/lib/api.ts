@@ -42,24 +42,35 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
     
+    // Thêm debug log
+    console.log('Phát hiện lỗi API:', error.response?.status, error.response?.data);
+    
     // Xử lý token hết hạn (401)
     if (error.response?.status === 401 && !originalRequest._retry) {
+      console.log('Phát hiện lỗi 401, cố gắng refresh token...');
       originalRequest._retry = true;
       
       // Nếu đang refresh token rồi, chờ đến khi hoàn thành
       if (isRefreshing) {
         try {
+          console.log('Đang chờ refresh token đang xử lý...');
           await refreshPromise;
           // Thử lại request với token mới
           const token = localStorage.getItem('token');
+          if (!token) {
+            console.error('Không có token sau khi refresh');
+            throw new Error('Không có token sau khi refresh');
+          }
           originalRequest.headers.Authorization = `Bearer ${token}`;
           return api(originalRequest);
         } catch (refreshError) {
+          console.error('Lỗi refresh token:', refreshError);
           return Promise.reject(refreshError);
         }
       }
       
       // Bắt đầu quá trình refresh token
+      console.log('Bắt đầu quá trình refresh token...');
       isRefreshing = true;
       refreshPromise = refreshAccessToken().finally(() => {
         isRefreshing = false;
@@ -67,14 +78,17 @@ api.interceptors.response.use(
       });
       
       try {
-        await refreshPromise;
+        const newToken = await refreshPromise;
+        console.log('Refresh token thành công, thử lại request ban đầu');
+        
         // Thử lại request với token mới
-        const token = localStorage.getItem('token');
-        originalRequest.headers.Authorization = `Bearer ${token}`;
+        originalRequest.headers.Authorization = `Bearer ${newToken}`;
         return api(originalRequest);
       } catch (refreshError) {
+        console.error('Refresh token thất bại:', refreshError);
         // Nếu refresh token thất bại, đăng xuất người dùng
         if (typeof window !== 'undefined') {
+          console.log('Xóa token và chuyển hướng đến trang đăng nhập');
           localStorage.removeItem('token');
           // Chuyển hướng đến trang đăng nhập nếu cần
           window.location.href = '/admin';
@@ -97,14 +111,22 @@ api.interceptors.response.use(
 // Hàm để refresh access token
 export const refreshAccessToken = async () => {
   try {
+    console.log('Đang cố gắng refresh token tại URL:', `${API_URL}/auth/refresh-token`);
     const response = await axios.post(`${API_URL}/auth/refresh-token`, {}, {
-      withCredentials: true // Quan trọng: cho phép gửi cookies
+      withCredentials: true, // Quan trọng: cho phép gửi cookies
+      headers: {
+        'Content-Type': 'application/json',
+        // Thêm token hiện tại vào header để hỗ trợ refresh
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
     });
     
     if (response.data.success && response.data.token) {
+      console.log('Refresh token thành công, token mới đã được lưu');
       localStorage.setItem('token', response.data.token);
       return response.data.token;
     } else {
+      console.error('Phản hồi API không có token:', response.data);
       throw new Error('Không thể làm mới token');
     }
   } catch (error) {
