@@ -17,7 +17,8 @@ export default function AddPrizePage() {
     imageUrl: '',
     probability: 10,
     originalQuantity: 1,
-    active: true
+    active: true,
+    isRealPrize: true
   });
   
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -167,6 +168,20 @@ export default function AddPrizePage() {
               />
               <label htmlFor="active" className="ml-2 block text-sm text-gray-900">
                 Kích hoạt phần thưởng
+              </label>
+            </div>
+            
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                name="isRealPrize"
+                id="isRealPrize"
+                checked={formData.isRealPrize}
+                onChange={handleChange}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <label htmlFor="isRealPrize" className="ml-2 block text-sm text-gray-900">
+                Phần thưởng thật <span className="text-sm text-gray-500">(Nếu không chọn, người dùng sẽ nhận được thông báo "Không trúng thưởng")</span>
               </label>
             </div>
           </div>

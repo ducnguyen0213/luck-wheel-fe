@@ -105,10 +105,6 @@ export default function UsersPage() {
     fetchUsers(page, pagination.limit);
   };
   
-  const handleItemsPerPageChange = (newLimit: number) => {
-    fetchUsers(1, newLimit);
-  };
-  
   const filteredUsers = searchTerm.trim() === '' 
     ? users 
     : users.filter(user => 
@@ -254,7 +250,6 @@ export default function UsersPage() {
                 onPageChange={handlePageChange}
                 totalItems={pagination.totalItems}
                 itemsPerPage={pagination.limit}
-                onItemsPerPageChange={handleItemsPerPageChange}
               />
             )}
           </>

@@ -31,6 +31,7 @@ interface Prize {
   imageUrl: string;
   description?: string;
   probability: number;
+  isRealPrize?: boolean;
 }
 
 export default function HomePage() {
@@ -201,9 +202,6 @@ export default function HomePage() {
                 <h2 className="text-2xl font-bold mb-2">
                   Xin chào, {user?.name}!
                 </h2>
-                <p className="text-gray-600 mb-2">
-                  Bạn có <span className="font-bold text-blue-600">{remainingSpins}</span> lượt quay hôm nay
-                </p>
                 {remainingSpins <= 0 && (
                   <p className="text-red-500 mt-2 font-semibold">
                     Bạn đã hết lượt quay trong ngày hôm nay. Vui lòng quay lại vào ngày mai!

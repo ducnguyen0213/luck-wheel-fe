@@ -22,7 +22,7 @@ export default function DashboardPage() {
       try {
         const [statsResponse, usersResponse, prizesResponse] = await Promise.all([
           getSpinStats(dateRange.startDate ? dateRange : undefined),
-          getAllUsers(),
+          getAllUsers(1, 10),
           getAllPrizes(),
         ]);
 
@@ -31,7 +31,7 @@ export default function DashboardPage() {
         }
 
         if (usersResponse.data.success) {
-          setUsersCount(usersResponse.data.count);
+          setUsersCount(usersResponse.data.pagination.totalItems || 0);
         }
 
         if (prizesResponse.data.success) {
@@ -155,7 +155,10 @@ export default function DashboardPage() {
           </div>
           <div>
             <p className="text-gray-500 text-sm">Người chơi</p>
-            <p className="text-xl font-bold text-gray-800">{usersCount}</p>
+            <div className="flex items-baseline">
+              <p className="text-xl font-bold text-gray-800">{usersCount}</p>
+              
+            </div>
           </div>
         </div>
 

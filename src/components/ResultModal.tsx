@@ -18,6 +18,7 @@ interface Prize {
   name: string;
   imageUrl: string;
   description?: string;
+  isRealPrize?: boolean;
 }
 
 interface ResultModalProps {
@@ -64,8 +65,9 @@ const ResultModal: React.FC<ResultModalProps> = ({
         setAnimationClass('');
       }, 1500);
       
-      // Nếu trúng thưởng, hiển thị particles sau 800ms
-      if (isWin) {
+      // Nếu trúng thưởng và là phần thưởng thật, hiển thị particles sau 800ms
+      // Chỉ hiển thị hiệu ứng confetti cho phần thưởng thật
+      if (isWin && prize?.isRealPrize !== false) {
         const particlesTimer = setTimeout(() => {
           setShowParticles(true);
         }, 800);
@@ -88,18 +90,18 @@ const ResultModal: React.FC<ResultModalProps> = ({
       setAnimationClass('');
       setShowParticles(false);
     }
-  }, [isOpen, isWin]);
+  }, [isOpen, isWin, prize]);
   
-  // Hiệu ứng confetti nếu trúng thưởng
+  // Hiệu ứng confetti nếu trúng thưởng thật
   useEffect(() => {
-    if (isWin && showParticles) {
+    if (isWin && prize?.isRealPrize !== false && showParticles) {
       const timer = setTimeout(() => {
         triggerConfetti();
       }, 500);
       
       return () => clearTimeout(timer);
     }
-  }, [isWin, showParticles]);
+  }, [isWin, showParticles, prize]);
 
   // Xử lý đóng modal tự động sau thời gian định sẵn
   useEffect(() => {
@@ -222,9 +224,9 @@ const ResultModal: React.FC<ResultModalProps> = ({
               </button>
               
               <div className="px-5 pt-6 pb-5 sm:p-8">
-                {isWin && prize ? (
+                {isWin && prize && prize.isRealPrize !== false ? (
                   <div className="w-full flex flex-col items-center text-center">
-                    {/* Tiêu đề khi thắng */}
+                    {/* Tiêu đề khi thắng phần thưởng thật */}
                     <h1 className={`title-text text-5xl font-extrabold mb-6 ${animationClass} text-center text-green-600 drop-shadow-md tracking-wide`}>
                       CHÚC MỪNG!
                     </h1>
@@ -348,9 +350,9 @@ const ResultModal: React.FC<ResultModalProps> = ({
                   </div>
                 ) : (
                   <div className="w-full flex flex-col items-center">
-                    {/* Tiêu đề khi thua */}
+                    {/* Tiêu đề khi không trúng thưởng hoặc trúng phần thưởng giả */}
                     <h1 className={`title-text text-4xl font-extrabold text-center mb-6 ${animationClass} text-gray-700`}>
-                      Rất tiếc!
+                      {isWin && prize ? 'Rất tiếc!' : 'Rất tiếc!'}
                     </h1>
                     
                     <Transition
@@ -362,9 +364,22 @@ const ResultModal: React.FC<ResultModalProps> = ({
                       leave="transition ease-in duration-200"
                       leaveFrom="opacity-100"
                       leaveTo="opacity-0"
-                      className="w-36 h-36 flex items-center justify-center bg-gradient-to-r from-gray-200 to-gray-300 rounded-full mb-6 shadow-inner"
+                      className="mb-6 relative mx-auto"
                     >
-                      <span className="text-7xl">😔</span>
+                      {prize && prize.imageUrl ? (
+                        <div className="relative max-w-[200px] mx-auto">
+                          <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-gray-300 to-gray-400 opacity-60 blur-lg"></div>
+                          <img
+                            src={prize.imageUrl}
+                            alt={prize.name || "Phần thưởng"}
+                            className="relative z-10 w-full h-auto object-contain filter opacity-80 rounded-lg border-2 border-gray-300/50"
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-36 h-36 flex items-center justify-center bg-gradient-to-r from-gray-200 to-gray-300 rounded-full shadow-inner">
+                          <span className="text-7xl">😔</span>
+                        </div>
+                      )}
                     </Transition>
                     
                     <Transition
@@ -386,15 +401,7 @@ const ResultModal: React.FC<ResultModalProps> = ({
                   </div>
                 )}
                 
-                {/* Thông tin lượt quay còn lại */}
-                <p className={`mt-6 text-md bg-blue-50 py-3 px-6 rounded-full inline-flex items-center shadow-sm ${
-                  remainingSpins > 0 ? 'text-blue-700' : 'text-red-600'
-                }`}>
-                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                  </svg>
-                  Số lượt quay còn lại: <span className="font-bold ml-1.5">{remainingSpins}</span>
-                </p>
+               
               </div>
               
               <div className="bg-gray-50/80 backdrop-blur-sm px-5 py-4 sm:px-6 sm:flex sm:flex-row-reverse gap-2">

@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Sử dụng API URL từ biến môi trường hoặc sử dụng mặc định nếu không có
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 console.log('API URL đang sử dụng:', API_URL);
 
 // Biến để theo dõi nếu refresh token đang được xử lý

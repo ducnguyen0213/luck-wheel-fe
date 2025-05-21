@@ -16,6 +16,7 @@ interface Prize {
   remainingQuantity: number;
   originalQuantity: number;
   active: boolean;
+  isRealPrize: boolean;
   createdAt: string;
 }
 
@@ -62,13 +63,21 @@ export default function PrizesPage() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Quản lý Phần thưởng</h1>
-        <Link 
-          href="/admin/prizes/add" 
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center"
-        >
-          <FiPlus className="mr-2" /> Thêm phần thưởng
-        </Link>
+        <h1 className="text-3xl font-bold">Quản lý phần thưởng</h1>
+        <div className="flex">
+          <Link
+            href="/admin/prizes/probability"
+            className="px-4 py-2 mr-2 border border-yellow-500 text-yellow-500 hover:bg-yellow-500 hover:text-white rounded-md flex items-center justify-center transition-colors"
+          >
+            <FiEdit className="mr-1" /> Quản lý tỷ lệ
+          </Link>
+          <Link 
+            href="/admin/prizes/add"
+            className="px-4 py-2 border border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white rounded-md flex items-center justify-center transition-colors"
+          >
+            <FiPlus className="mr-1" /> Thêm phần thưởng
+          </Link>
+        </div>
       </div>
       
       {isLoading ? (
@@ -95,6 +104,9 @@ export default function PrizesPage() {
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Trạng thái
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Loại thưởng
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Thao tác
@@ -147,6 +159,15 @@ export default function PrizesPage() {
                             : 'bg-red-100 text-red-800'
                         }`}>
                           {prize.active ? 'Đang hoạt động' : 'Đã tắt'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          prize.isRealPrize 
+                            ? 'bg-blue-100 text-blue-800' 
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {prize.isRealPrize ? 'Phần thưởng thật' : 'Không trúng thưởng'}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
