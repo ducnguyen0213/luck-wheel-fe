@@ -18,6 +18,7 @@ interface Prize {
   active: boolean;
   isRealPrize: boolean;
   createdAt: string;
+  tier: number;
 }
 
 export default function PrizesPage() {
@@ -94,6 +95,9 @@ export default function PrizesPage() {
                     Phần thưởng
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Bậc
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Tỉ lệ (%)
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -144,6 +148,9 @@ export default function PrizesPage() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {prize.tier}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {prize.probability}%
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -191,7 +198,7 @@ export default function PrizesPage() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
+                    <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
                       Không có phần thưởng nào. Hãy thêm phần thưởng mới!
                     </td>
                   </tr>

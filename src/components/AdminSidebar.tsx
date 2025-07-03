@@ -170,6 +170,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, setCollapsed }) 
           <NavItem href="/admin/dashboard" icon={<FiHome />} text="Dashboard" />
           <NavItem href="/admin/prizes" icon={<FiGift />} text="Phần thưởng" />
           <NavItem href="/admin/users" icon={<FiUsers />} text="Người dùng" />
+          <NavItem href="/admin/employees" icon={<FiUsers />} text="Nhân viên" />
           <NavItem href="/admin/spins" icon={<FiPieChart />} text="Lượt quay" />
           <NavItem href="/admin/register" icon={<FiUserPlus />} text="Thêm admin" />
         </div>

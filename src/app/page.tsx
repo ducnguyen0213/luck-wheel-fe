@@ -12,7 +12,9 @@ import {
   createOrUpdateUser, 
   getPublicPrizes, 
   getUserSpins, 
-  spinWheel 
+  spinWheelForUser,
+  verifyEmployeeCode,
+  spinWheelForEmployee,
 } from '@/lib/api';
 
 interface User {
@@ -23,6 +25,16 @@ interface User {
   address: string;
   codeShop: string;
   spinsToday: number;
+}
+
+interface Employee {
+  name: string;
+  email: string;
+  phone: string;
+  codeShop: string;
+  address: string;
+  remainingSpins: number;
+  machinesSold: number;
 }
 
 interface Prize {
@@ -36,8 +48,17 @@ interface Prize {
 
 export default function HomePage() {
   const [step, setStep] = useState<'form' | 'wheel'>('form');
+  const [viewMode, setViewMode] = useState<'user' | 'employee'>('user');
   const [isFormSubmitting, setIsFormSubmitting] = useState(false);
+
+  // User state
   const [user, setUser] = useState<User | null>(null);
+
+  // Employee state
+  const [employee, setEmployee] = useState<Employee | null>(null);
+  const [employeeCode, setEmployeeCode] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
+
   const [prizes, setPrizes] = useState<Prize[]>([]);
   const [isSpinning, setIsSpinning] = useState(false);
   const [spinResult, setSpinResult] = useState<any>(null);
@@ -109,26 +130,52 @@ export default function HomePage() {
       setIsFormSubmitting(false);
     }
   };
+
+  const handleVerifyEmployee = async () => {
+    if (!employeeCode) {
+      toast.warn('Vui lòng nhập mã nhân viên của bạn');
+      return;
+    }
+    setIsVerifying(true);
+    try {
+      const response = await verifyEmployeeCode(employeeCode);
+      if (response.data.exists) {
+        setEmployee(response.data.employee);
+        setRemainingSpins(response.data.employee.remainingSpins);
+        setStep('wheel');
+        toast.success(`Xác minh thành công! Chào ${response.data.employee.name}.`);
+      } else {
+        toast.error('Mã nhân viên không tồn tại hoặc không hợp lệ.');
+        setEmployee(null);
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Lỗi khi xác minh mã nhân viên.');
+      setEmployee(null);
+    } finally {
+      setIsVerifying(false);
+    }
+  };
   
   // Xử lý sự kiện khi người dùng click vào nút quay
   const handleWheelSpin = async () => {
-    if (!user || isSpinning || remainingSpins <= 0) return;
-    
-    // Đánh dấu bắt đầu quay
+    if (isSpinning || remainingSpins <= 0) return;
+
+    if (viewMode === 'user' && !user) return;
+    if (viewMode === 'employee' && !employee) return;
+
     setIsSpinning(true);
     
     try {
-      // Gọi API để xác định kết quả quay
-      const response = await spinWheel(user._id);
+      const response = viewMode === 'employee'
+        ? await spinWheelForEmployee(employeeCode)
+        : await spinWheelForUser(user!._id);
       
       if (response.data.success) {
         const result = response.data.data;
         
-        // Lưu kết quả quay để hiển thị sau khi animation hoàn thành
         setSpinResult(result);
         setRemainingSpins(result.remainingSpins);
         
-        // Tìm phần thưởng đã trúng để hiển thị đúng trong vòng quay
         const wonPrize = prizes.find(prize => prize._id === result.spin.prize._id);
         setSelectedPrize(wonPrize || null);
       } else {
@@ -152,6 +199,8 @@ export default function HomePage() {
   
   const resetForm = () => {
     setUser(null);
+    setEmployee(null);
+    setEmployeeCode('');
     setStep('form');
     setShowResult(false);
     setSpinResult(null);
@@ -186,25 +235,65 @@ export default function HomePage() {
             Vòng Quay May Mắn
           </h1>
           <p className="text-white text-xl max-w-xl mx-auto">
-            Hãy nhập thông tin và thử vận may của bạn với vòng quay may mắn!
+            Hãy nhập thông tin và thử vận may của bạn!
           </p>
         </div>
 
         <div className="max-w-5xl mx-auto">
           {step === 'form' ? (
-            <UserForm 
-              onSubmit={handleUserFormSubmit} 
-              isSubmitting={isFormSubmitting}
-            />
+            <div className="bg-white p-8 rounded-xl shadow-lg">
+              <div className="flex justify-center mb-6 border-b">
+                <button
+                  className={`px-6 py-3 font-semibold ${viewMode === 'user' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'}`}
+                  onClick={() => setViewMode('user')}
+                >
+                  KHÁCH HÀNG
+                </button>
+                <button
+                  className={`px-6 py-3 font-semibold ${viewMode === 'employee' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'}`}
+                  onClick={() => setViewMode('employee')}
+                >
+                  NHÂN VIÊN
+                </button>
+              </div>
+
+              {viewMode === 'user' ? (
+                <UserForm 
+                  onSubmit={handleUserFormSubmit} 
+                  isSubmitting={isFormSubmitting}
+                />
+              ) : (
+                <div className="text-center">
+                  <h2 className="text-2xl font-bold mb-4">Xác Minh Mã Nhân Viên</h2>
+                  <p className="text-gray-600 mb-6">Vui lòng nhập mã nhân viên của bạn để tiếp tục.</p>
+                  <input
+                    type="text"
+                    value={employeeCode}
+                    onChange={(e) => setEmployeeCode(e.target.value.toUpperCase())}
+                    placeholder="Ví dụ: NV001"
+                    className="w-full max-w-md mx-auto px-4 py-3 border rounded-lg mb-4 text-center"
+                    disabled={isVerifying}
+                  />
+                  <button
+                    onClick={handleVerifyEmployee}
+                    disabled={isVerifying || !employeeCode}
+                    className="w-full max-w-md mx-auto bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-blue-300"
+                  >
+                    {isVerifying ? 'Đang xác minh...' : 'Xác Minh và Quay'}
+                  </button>
+                </div>
+              )}
+            </div>
           ) : (
             <div className="bg-white p-8 rounded-xl shadow-lg">
               <div className="text-center mb-6">
                 <h2 className="text-2xl font-bold mb-2">
-                  Xin chào, {user?.name}!
+                  Xin chào, {viewMode === 'user' ? user?.name : employee?.name}!
                 </h2>
+                <p>Số lượt quay còn lại: <span className="font-bold text-blue-600">{remainingSpins}</span></p>
                 {remainingSpins <= 0 && (
                   <p className="text-red-500 mt-2 font-semibold">
-                    Bạn đã hết lượt quay trong ngày hôm nay. Vui lòng quay lại vào ngày mai!
+                    Bạn đã hết lượt quay. Vui lòng quay lại sau!
                   </p>
                 )}
                 {isSpinning && !showResult && (
@@ -239,7 +328,7 @@ export default function HomePage() {
                   onClick={resetForm}
                   className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-md transition-colors"
                 >
-                  Đổi người chơi
+                  Quay lại
                 </button>
               </div>
             </div>
@@ -254,20 +343,21 @@ export default function HomePage() {
           prize={spinResult.spin.prize}
           isWin={spinResult.isWin}
           remainingSpins={remainingSpins}
-          user={user}
+          user={viewMode === 'user' ? user : employee}
         />
       )}
       
       <ToastContainer
-        position="bottom-right"
+        position="top-right"
         autoClose={5000}
         hideProgressBar={false}
-        newestOnTop
+        newestOnTop={false}
         closeOnClick
         rtl={false}
         pauseOnFocusLoss
         draggable
         pauseOnHover
+        theme="colored"
       />
     </div>
   );

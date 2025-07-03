@@ -217,9 +217,34 @@ export const exportUsers = async (page?: number, limit?: number) => {
   return api.get('/users/export', { params: { page, limit } });
 };
 
+// Employee APIs
+export const getAllEmployees = async (page?: number, limit?: number) => {
+  return api.get('/employees', { params: { page, limit } });
+};
+
+export const getEmployeeById = async (id: string) => {
+  return api.get(`/employees/${id}`);
+};
+
+export const createEmployee = async (employeeData: any) => {
+  return api.post('/employees', employeeData);
+};
+
+export const updateEmployee = async (id: string, employeeData: any) => {
+  return api.put(`/employees/${id}`, employeeData);
+};
+
+export const verifyEmployeeCode = async (employeeCode: string) => {
+  return api.get(`/employees/verify/${employeeCode}`);
+};
+
 // Spin APIs
-export const spinWheel = async (userId: string) => {
+export const spinWheelForUser = async (userId: string) => {
   return api.post('/spins', { userId });
+};
+
+export const spinWheelForEmployee = async (employeeCode: string) => {
+  return api.post('/spins/employee', { employeeCode });
 };
 
 export const getUserSpins = async (userId: string, page?: number, limit?: number) => {

@@ -19,7 +19,8 @@ export default function EditPrizePage({ params }: { params: { id: string } }) {
     probability: 10,
     originalQuantity: 1,
     active: true,
-    isRealPrize: true
+    isRealPrize: true,
+    tier: 1,
   });
   
   useEffect(() => {
@@ -37,7 +38,8 @@ export default function EditPrizePage({ params }: { params: { id: string } }) {
             probability: prize.probability,
             originalQuantity: prize.originalQuantity,
             active: prize.active,
-            isRealPrize: prize.isRealPrize !== undefined ? prize.isRealPrize : true
+            isRealPrize: prize.isRealPrize !== undefined ? prize.isRealPrize : true,
+            tier: prize.tier || 1,
           });
         } else {
           toast.error('Không tìm thấy phần thưởng');
@@ -60,7 +62,7 @@ export default function EditPrizePage({ params }: { params: { id: string } }) {
     if (type === 'checkbox') {
       const checked = (e.target as HTMLInputElement).checked;
       setFormData(prev => ({ ...prev, [name]: checked }));
-    } else if (name === 'probability' || name === 'originalQuantity') {
+    } else if (name === 'probability' || name === 'originalQuantity' || name === 'tier') {
       setFormData(prev => ({ ...prev, [name]: parseInt(value) || 0 }));
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
@@ -196,6 +198,22 @@ export default function EditPrizePage({ params }: { params: { id: string } }) {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 required
               />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Bậc giải thưởng <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                name="tier"
+                value={formData.tier}
+                onChange={handleChange}
+                min="1"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                required
+              />
+              <p className="mt-1 text-sm text-gray-500">Bậc càng cao, giải thưởng càng giá trị.</p>
             </div>
             
             <div className="flex items-center">

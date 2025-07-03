@@ -9,16 +9,19 @@ import * as XLSX from 'xlsx';
 import { getAllSpins } from '@/lib/api';
 import Pagination from '@/components/Pagination';
 
+interface User {
+  _id: string;
+  name: string;
+  email: string;
+  phone: string;
+  address?: string;
+  codeShop?: string;
+}
+
 interface Spin {
   _id: string;
-  user: {
-    _id: string;
-    name: string;
-    email: string;
-    phone: string;
-    address?: string;
-    codeShop?: string;
-  };
+  user?: User;
+  employee?: User; // Can be a user or an employee
   prize: {
     _id: string;
     name: string;
@@ -120,17 +123,21 @@ export default function SpinsPage() {
       
       // Chuyển đổi dữ liệu cho Excel
       const workbook = XLSX.utils.book_new();
-      const worksheet = XLSX.utils.json_to_sheet(spins.map((spin) => ({
-        'ID': spin._id,
-        'Người dùng': spin.user.name,
-        'Email': spin.user.email,
-        'Số điện thoại': spin.user.phone,
-        'Địa chỉ': spin.user.address || 'Chưa cung cấp',
-        'Mã cửa hàng': spin.user.codeShop || 'Không có',
-        'Phần thưởng': spin.prize ? spin.prize.name : 'Không trúng',
-        'Kết quả': spin.isWin ? 'Trúng thưởng' : 'Không trúng',
-        'Thời gian': new Date(spin.createdAt).toLocaleString('vi-VN')
-      })));
+      const worksheet = XLSX.utils.json_to_sheet(spins.map((spin) => {
+        const person = spin.user || spin.employee;
+        return {
+          'ID': spin._id,
+          'Người quay': person?.name || 'Không xác định',
+          'Email': person?.email || 'Không xác định',
+          'Số điện thoại': person?.phone || 'Không xác định',
+          'Loại': spin.user ? 'Khách hàng' : (spin.employee ? 'Nhân viên' : 'N/A'),
+          'Địa chỉ': person?.address || 'Chưa cung cấp',
+          'Mã cửa hàng': person?.codeShop || 'Không có',
+          'Phần thưởng': spin.prize?.name || 'Không trúng',
+          'Kết quả': spin.isWin ? 'Trúng thưởng' : 'Không trúng',
+          'Thời gian': new Date(spin.createdAt).toLocaleString('vi-VN')
+        };
+      }));
       
       XLSX.utils.book_append_sheet(workbook, worksheet, 'Lịch sử quay');
       XLSX.writeFile(workbook, 'lich-su-quay.xlsx');
@@ -207,7 +214,10 @@ export default function SpinsPage() {
                         Thời gian
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Người dùng
+                        Người quay
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Loại
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Số điện thoại
@@ -227,53 +237,67 @@ export default function SpinsPage() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {spins.map((spin) => (
+                    {spins.map((spin) => {
+                      const person = spin.user || spin.employee;
+                      const personType = spin.user ? 'Khách hàng' : (spin.employee ? 'Nhân viên' : 'N/A');
+
+                      return (
                       <tr key={spin._id}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {new Date(spin.createdAt).toLocaleString('vi-VN')}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
-                            <div className="flex-shrink-0 h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center">
-                              <span className="text-blue-600 font-bold">
-                                {spin.user.name.charAt(0).toUpperCase()}
+                            <div className={`flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center ${personType === 'Nhân viên' ? 'bg-green-100' : 'bg-blue-100'}`}>
+                              <span className={`font-bold ${personType === 'Nhân viên' ? 'text-green-600' : 'text-blue-600'}`}>
+                                {person?.name?.charAt(0).toUpperCase() || '?'}
                               </span>
                             </div>
                             <div className="ml-4">
                               <div className="text-sm font-medium text-gray-900">
-                                {spin.user.name}
+                                {person?.name || 'Không xác định'}
                               </div>
                               <div className="text-xs text-gray-500">
-                                {spin.user.email}
+                                {person?.email || 'N/A'}
                               </div>
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {spin.user.phone}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                           <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                              personType === 'Nhân viên' 
+                                ? 'bg-green-100 text-green-800' 
+                                : 'bg-blue-100 text-blue-800'
+                            }`}>
+                              {personType}
+                            </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {spin.user.address ? (
-                            spin.user.address.length > 30 ? `${spin.user.address.substring(0, 30)}...` : spin.user.address
-                          ) : 'Chưa cung cấp'}
+                          {person?.phone || 'N/A'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {spin.user.codeShop || 'Không có'}
+                          {person?.address || 'N/A'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {spin.prize ? spin.prize.name : 'Không có'}
+                          {person?.codeShop || 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {spin.prize?.name || (spin.isWin ? 'Không xác định' : 'Không trúng')}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            spin.isWin 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-red-100 text-red-800'
-                          }`}>
-                            {spin.isWin ? 'Trúng thưởng' : 'Không trúng'}
-                          </span>
+                          {spin.isWin ? (
+                            <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                              Trúng thưởng
+                            </span>
+                          ) : (
+                            <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                              Không trúng
+                            </span>
+                          )}
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
