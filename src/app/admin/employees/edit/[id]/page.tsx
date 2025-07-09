@@ -17,6 +17,7 @@ interface EmployeeFormData {
   codeShop: string;
   address: string;
   machinesSold: number;
+  totalSpins: number;
 }
 
 export default function EditEmployeePage() {
@@ -26,12 +27,18 @@ export default function EditEmployeePage() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [employee, setEmployee] = useState<any>(null);
   
-  const { register, handleSubmit, control, setValue, formState: { errors } } = useForm<EmployeeFormData>({
+  const { register, handleSubmit, control, setValue, watch, formState: { errors } } = useForm<EmployeeFormData>({
     defaultValues: {
         machinesSold: 0,
+        totalSpins: 0
     }
   });
+
+  // Theo dõi giá trị số máy đã bán và tổng số lượt quay
+  const machinesSold = watch('machinesSold');
+  const totalSpins = watch('totalSpins');
 
   useEffect(() => {
     const fetchEmployee = async () => {
@@ -44,6 +51,8 @@ export default function EditEmployeePage() {
         const response = await getEmployeeById(id);
         if (response.data) {
           const employee = response.data;
+          setEmployee(employee);
+          
           // Set form values from fetched data
           setValue('employeeCode', employee.employeeCode);
           setValue('name', employee.name);
@@ -52,6 +61,7 @@ export default function EditEmployeePage() {
           setValue('codeShop', employee.codeShop || '');
           setValue('address', employee.address || '');
           setValue('machinesSold', employee.machinesSold || 0);
+          setValue('totalSpins', employee.totalSpins || 0);
         } else {
           toast.error('Không tìm thấy nhân viên');
           router.push('/admin/employees');
@@ -70,8 +80,38 @@ export default function EditEmployeePage() {
   const onSubmit: SubmitHandler<EmployeeFormData> = async (data) => {
     if(!id) return;
     setIsSubmitting(true);
+    
     try {
-      const response = await updateEmployee(id, { ...data, machinesSold: Number(data.machinesSold) });
+      // Tách riêng dữ liệu cơ bản và dữ liệu liên quan đến lượt quay
+      const { machinesSold, totalSpins, ...basicInfo } = data;
+      
+      // Chuyển đổi sang số
+      const machinesSoldNum = Number(machinesSold);
+      const totalSpinsNum = Number(totalSpins);
+      
+      // Chuẩn bị dữ liệu để gửi theo thứ tự ưu tiên
+      const updateData: {
+        machinesSold: number;
+        employeeCode: string;
+        name: string;
+        email: string;
+        phone: string;
+        codeShop: string;
+        address: string;
+        totalSpins?: number;
+      } = {
+        ...basicInfo,
+        machinesSold: machinesSoldNum,
+      };
+      
+      // Nếu có totalSpins (đã được chỉnh sửa khác với dữ liệu ban đầu), sử dụng giá trị này
+      if (employee && totalSpinsNum !== employee.totalSpins) {
+        updateData.totalSpins = totalSpinsNum;
+      }
+      
+      // Thực hiện API call để cập nhật
+      const response = await updateEmployee(id, updateData);
+      
       if (response.data) {
         toast.success('Cập nhật thông tin nhân viên thành công!');
         // Use window.location to force a refresh on the employee list page
@@ -106,6 +146,16 @@ export default function EditEmployeePage() {
       </div>
       
       <form onSubmit={handleSubmit(onSubmit)} className="bg-white p-6 rounded-lg shadow space-y-6">
+        <div className="bg-blue-50 p-4 mb-6 border-l-4 border-blue-500 rounded-sm">
+          <h3 className="text-lg font-semibold text-blue-700">Thông tin quan trọng về số lượt quay</h3>
+          <ul className="list-disc list-inside mt-2 text-sm text-blue-800">
+            <li>Nếu chỉ cập nhật <b>số máy đã bán</b>, hệ thống sẽ tự động tính lại số lượt quay</li>
+            <li>Nếu bạn thay đổi <b>tổng số lượt quay</b>, giá trị này sẽ được ưu tiên sử dụng (ghi đè)</li>
+            <li>Nếu tổng số lượt quay mới {`>`} số lượt quay cũ: Hệ thống sẽ reset số lượt đã sử dụng về 0</li>
+            <li>Nếu tổng số lượt quay mới ≤ số lượt đã sử dụng: Hệ thống sẽ giới hạn số lượt đã sử dụng bằng số lượt quay mới</li>
+          </ul>
+        </div>
+        
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Employee Code */}
           <div>
@@ -194,6 +244,30 @@ export default function EditEmployeePage() {
                 )}
             />
             {errors.machinesSold && <p className="mt-1 text-sm text-red-600">{errors.machinesSold.message}</p>}
+          </div>
+
+          {/* Total Spins */}
+          <div>
+            <label htmlFor="totalSpins" className="block text-sm font-medium text-gray-700">Tổng số lượt quay</label>
+            <Controller
+                name="totalSpins"
+                control={control}
+                rules={{ 
+                    required: 'Tổng số lượt quay là bắt buộc',
+                    min: { value: 0, message: 'Số lượt quay không thể âm' }
+                }}
+                render={({ field }) => (
+                    <input
+                        type="number"
+                        id="totalSpins"
+                        {...field}
+                        onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)}
+                        className={`mt-1 block w-full px-3 py-2 border ${errors.totalSpins ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500`}
+                    />
+                )}
+            />
+            {errors.totalSpins && <p className="mt-1 text-sm text-red-600">{errors.totalSpins.message}</p>}
+            <p className="mt-1 text-sm text-gray-500">Số lượt quay sẽ được tính tự động dựa trên số máy bán được, nhưng bạn có thể ghi đè tại đây.</p>
           </div>
         </div>
 

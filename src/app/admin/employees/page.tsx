@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { toast } from 'react-toastify';
-import { FiEdit, FiPlusCircle } from 'react-icons/fi';
+import { FiEdit, FiPlusCircle, FiUpload, FiDownload } from 'react-icons/fi';
 import Link from 'next/link';
 
-import { getAllEmployees } from '@/lib/api';
+import { getAllEmployees, importEmployeesFromExcel } from '@/lib/api';
 
 interface Employee {
   _id: string;
@@ -23,7 +23,9 @@ interface Employee {
 export default function EmployeesPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isImporting, setIsImporting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   useEffect(() => {
     fetchEmployees();
@@ -45,6 +47,56 @@ export default function EmployeesPage() {
       setIsLoading(false);
     }
   };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      toast.error('Vui lòng chọn file Excel');
+      return;
+    }
+
+    // Kiểm tra định dạng file
+    if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
+      toast.error('Vui lòng chọn file Excel có định dạng .xlsx hoặc .xls');
+      // Reset input file
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
+    try {
+      setIsImporting(true);
+      const response = await importEmployeesFromExcel(file);
+      
+      if (response.data && response.data.success) {
+        const { total, created, updated, failed } = response.data.results;
+        toast.success(`Import thành công: ${total} nhân viên (Tạo mới: ${created}, Cập nhật: ${updated}, Lỗi: ${failed})`);
+        
+        // Tải lại danh sách nhân viên
+        fetchEmployees();
+      } else {
+        toast.error('Có lỗi xảy ra khi import nhân viên');
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Lỗi khi import nhân viên');
+    } finally {
+      setIsImporting(false);
+      // Reset input file
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  // Tạo template Excel mẫu
+  const handleDownloadTemplate = () => {
+    // Tạo một URL tới mẫu Excel trong thư mục public
+    const templateUrl = '/templates/mau_nhap_nhan_vien.xlsx';
+    // Tạo một thẻ a ẩn để tải xuống
+    const a = document.createElement('a');
+    a.href = templateUrl;
+    a.download = 'mau_nhap_nhan_vien.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
   
   const filteredEmployees = searchTerm.trim() === '' 
     ? employees 
@@ -60,12 +112,37 @@ export default function EmployeesPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Quản lý Nhân viên</h1>
-        <Link
-          href="/admin/employees/add"
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center"
-        >
-          <FiPlusCircle className="mr-2" /> Thêm nhân viên
-        </Link>
+        <div className="flex space-x-2">
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileUpload}
+            accept=".xlsx, .xls"
+            className="hidden"
+            id="excel-upload"
+          />
+
+          <button
+            onClick={handleDownloadTemplate}
+            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md flex items-center"
+          >
+            <FiDownload className="mr-2" /> Tải mẫu Excel
+          </button>
+          
+          <label
+            htmlFor="excel-upload"
+            className={`bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-md flex items-center cursor-pointer ${isImporting ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            <FiUpload className="mr-2" /> {isImporting ? 'Đang import...' : 'Import Excel'}
+          </label>
+          
+          <Link
+            href="/admin/employees/add"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center"
+          >
+            <FiPlusCircle className="mr-2" /> Thêm nhân viên
+          </Link>
+        </div>
       </div>
       
       <div className="bg-white p-4 rounded-lg shadow">

@@ -238,6 +238,16 @@ export const verifyEmployeeCode = async (employeeCode: string) => {
   return api.get(`/employees/verify/${employeeCode}`);
 };
 
+export const importEmployeesFromExcel = async (file: File) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  return api.post('/employees/import', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+};
+
 // Spin APIs
 export const spinWheelForUser = async (userId: string) => {
   return api.post('/spins', { userId });
