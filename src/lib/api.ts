@@ -218,8 +218,16 @@ export const exportUsers = async (page?: number, limit?: number) => {
 };
 
 // Employee APIs
-export const getAllEmployees = async (page?: number, limit?: number) => {
-  return api.get('/employees', { params: { page, limit } });
+export const getAllEmployees = async (page?: number, limit?: number, keyword?: string, machinesSold?: number) => {
+  const params: any = { page, limit };
+  if (keyword) {
+    params.keyword = keyword;
+  }
+  // Allow searching for 0 machines sold
+  if (machinesSold !== undefined && machinesSold !== null) {
+    params.machinesSold = machinesSold;
+  }
+  return api.get('/employees', { params });
 };
 
 export const getEmployeeById = async (id: string) => {
@@ -238,8 +246,8 @@ export const deleteEmployee = async (id: string) => {
   return api.delete(`/employees/${id}`);
 };
 
-export const deleteAllEmployees = async () => {
-  return api.delete('/employees');
+export const deleteMultipleEmployees = async (ids: string[]) => {
+  return api.delete('/employees', { data: { ids } });
 };
 
 export const verifyEmployeeCode = async (employeeCode: string) => {

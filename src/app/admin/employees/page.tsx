@@ -1,17 +1,18 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation'; // Import useRouter
 import { toast } from 'react-toastify';
-import { FiEdit, FiPlusCircle, FiUpload, FiDownload, FiTrash2, FiAlertTriangle } from 'react-icons/fi';
+import { FiEdit, FiPlusCircle, FiUpload, FiDownload, FiTrash2, FiSearch } from 'react-icons/fi';
 import Link from 'next/link';
 
-import { getAllEmployees, importEmployeesFromExcel, deleteEmployee, deleteAllEmployees } from '@/lib/api';
+import { getAllEmployees, importEmployeesFromExcel, deleteEmployee, deleteMultipleEmployees } from '@/lib/api';
 import Pagination from '@/components/Pagination';
 
 interface Employee {
   _id: string;
   employeeCode: string;
-  name: string;
+  name:string;
   email: string;
   phone: string;
   codeShop: string;
@@ -32,46 +33,104 @@ interface PaginationData {
 
 export default function EmployeesPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isImporting, setIsImporting] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  
+  // State for search inputs
+  const [searchKeyword, setSearchKeyword] = useState('');
+  const [searchMachinesSold, setSearchMachinesSold] = useState<number | null>(null);
+
+  // State for applied filters
+  const [filterKeyword, setFilterKeyword] = useState('');
+  const [filterMachinesSold, setFilterMachinesSold] = useState<number | null>(null);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState<PaginationData | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [pagination, setPagination] = useState<PaginationData>({
-    page: 1,
-    limit: 10,
-    totalPages: 1,
-    totalItems: 0,
-    hasNextPage: false,
-    hasPrevPage: false
-  });
-  
+  const selectAllCheckboxRef = useRef<HTMLInputElement>(null);
+  const router = useRouter(); // Initialize router
+
   useEffect(() => {
-    fetchEmployees(pagination.page);
-  }, []);
+    fetchEmployees(currentPage);
+  }, [currentPage, filterKeyword, filterMachinesSold]);
+
+  useEffect(() => {
+    if (selectAllCheckboxRef.current) {
+      const isIndeterminate = selectedIds.length > 0 && selectedIds.length < employees.length;
+      selectAllCheckboxRef.current.indeterminate = isIndeterminate;
+    }
+  }, [selectedIds, employees]);
+
+  useEffect(() => {
+    setSelectedIds([]);
+  }, [currentPage]);
   
-  const fetchEmployees = async (page = 1) => {
+  const fetchEmployees = async (pageToFetch: number = 1) => {
+    setIsLoading(true);
     try {
-      setIsLoading(true);
-      const response = await getAllEmployees(page, pagination.limit);
+      const filters = {
+        keyword: filterKeyword || undefined,
+        machinesSold: filterMachinesSold === null ? undefined : filterMachinesSold,
+      };
+      const response = await getAllEmployees(pageToFetch, 10, filters.keyword, filters.machinesSold);
+      const responseData = response.data;
       
-      if (response.data.success) {
-        setEmployees(response.data.data);
-        if (response.data.pagination) {
-          setPagination(response.data.pagination);
-        }
+      // Safeguard against unexpected API responses and use correct data structure
+      setEmployees(responseData?.data || []);
+      
+      if (responseData && responseData.pagination) {
+        setPagination({
+          page: responseData.pagination.page,
+          limit: responseData.pagination.limit,
+          totalPages: responseData.pagination.totalPages,
+          totalItems: responseData.pagination.totalItems,
+          hasNextPage: responseData.pagination.hasNextPage,
+          hasPrevPage: responseData.pagination.hasPrevPage,
+        });
       } else {
-        toast.error('Lỗi: Dữ liệu nhân viên trả về không đúng định dạng.');
-        setEmployees([]);
+        setPagination(null);
       }
+      
+      setSelectedIds([]);
     } catch (error) {
       toast.error('Lỗi khi tải danh sách nhân viên');
+      setEmployees([]);
+      setPagination(null);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handlePageChange = (newPage: number) => {
-    fetchEmployees(newPage);
+    setCurrentPage(newPage);
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') {
+      handleSearch();
+    }
+  };
+
+  const handleSearch = () => {
+    setFilterKeyword(searchKeyword);
+    setFilterMachinesSold(searchMachinesSold);
+    setCurrentPage(1); 
+  };
+
+  const handleReset = () => {
+    setSearchKeyword('');
+    setSearchMachinesSold(null);
+    setFilterKeyword('');
+    setFilterMachinesSold(null);
+    if (currentPage !== 1) {
+        setCurrentPage(1);
+    }
+  };
+
+  const handleRowDoubleClick = (id: string) => {
+    router.push(`/admin/employees/edit/${id}`);
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -90,14 +149,14 @@ export default function EmployeesPage() {
     try {
       setIsImporting(true);
       const response = await importEmployeesFromExcel(file);
+      const responseData = response.data;
       
-      if (response.data && response.data.success) {
-        const { total, created, updated, failed } = response.data.results;
+      if (responseData.success) {
+        const { total, created, updated, failed } = responseData.results;
         toast.success(`Import thành công: ${total} nhân viên (Tạo mới: ${created}, Cập nhật: ${updated}, Lỗi: ${failed})`);
-        
-        fetchEmployees();
+        fetchEmployees(1);
       } else {
-        toast.error('Có lỗi xảy ra khi import nhân viên');
+        toast.error(responseData.message || 'Có lỗi xảy ra khi import nhân viên');
       }
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Lỗi khi import nhân viên');
@@ -113,7 +172,7 @@ export default function EmployeesPage() {
     a.href = templateUrl;
     a.download = 'mau_nhap_nhan_vien.xlsx';
     document.body.appendChild(a);
-    a.click();
+a.click();
     document.body.removeChild(a);
   };
 
@@ -122,52 +181,56 @@ export default function EmployeesPage() {
       try {
         await deleteEmployee(id);
         toast.success(`Đã xóa nhân viên ${name}`);
-        // Tải lại dữ liệu trang hiện tại để cập nhật tổng số item
-        fetchEmployees(pagination.page);
+        fetchEmployees(currentPage);
       } catch (error: any) {
         toast.error(error.response?.data?.message || 'Lỗi khi xóa nhân viên');
       }
     }
   };
 
-  const handleDeleteAllEmployees = async () => {
-    const confirmation = window.prompt('Hành động này không thể hoàn tác. Để xác nhận xóa TẤT CẢ nhân viên, vui lòng nhập "xóa tất cả" vào ô bên dưới:');
-    if (confirmation === 'xóa tất cả') {
+  const handleDeleteSelected = async () => {
+    if (window.confirm(`Bạn có chắc chắn muốn xóa ${selectedIds.length} nhân viên đã chọn không?`)) {
       try {
-        await deleteAllEmployees();
-        toast.success('Đã xóa tất cả nhân viên.');
-        fetchEmployees(1); // Tải lại trang đầu tiên
+        await deleteMultipleEmployees(selectedIds);
+        toast.success(`Đã xóa ${selectedIds.length} nhân viên.`);
+        setSelectedIds([]);
+        fetchEmployees(currentPage);
       } catch (error: any) {
-        toast.error(error.response?.data?.message || 'Lỗi khi xóa tất cả nhân viên.');
+        toast.error(error.response?.data?.message || 'Lỗi khi xóa các nhân viên đã chọn.');
       }
-    } else if (confirmation !== null) { 
-      toast.warn('Xác nhận không hợp lệ. Hành động đã bị hủy.');
     }
   };
-  
-  const filteredEmployees = searchTerm.trim() === '' 
-    ? employees 
-    : employees.filter(employee => 
-        employee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        employee.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        employee.phone.includes(searchTerm) ||
-        employee.employeeCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (employee.codeShop && employee.codeShop.toLowerCase().includes(searchTerm.toLowerCase()))
-      );
+
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      const allIds = employees.map(emp => emp._id);
+      setSelectedIds(allIds);
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleSelectOne = (e: React.ChangeEvent<HTMLInputElement>, id: string) => {
+    if (e.target.checked) {
+      setSelectedIds(prev => [...prev, id]);
+    } else {
+      setSelectedIds(prev => prev.filter(prevId => prevId !== id));
+    }
+  };
   
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Quản lý Nhân viên</h1>
-        <div className="flex space-x-2">
-           <button
-            onClick={handleDeleteAllEmployees}
-            disabled={employees.length === 0}
-            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md flex items-center disabled:opacity-50"
-          >
-            <FiAlertTriangle className="mr-2" /> Xóa tất cả
-          </button>
-
+        <div className="flex items-center space-x-2">
+          {selectedIds.length > 0 && (
+            <button
+              onClick={handleDeleteSelected}
+              className="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-lg flex items-center transition-colors"
+            >
+              <FiTrash2 className="mr-2" /> Xóa ({selectedIds.length})
+            </button>
+          )}
           <input
             type="file"
             ref={fileInputRef}
@@ -179,153 +242,167 @@ export default function EmployeesPage() {
 
           <button
             onClick={handleDownloadTemplate}
-            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md flex items-center"
+            className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg flex items-center transition-colors"
           >
-            <FiDownload className="mr-2" /> Tải mẫu Excel
+            <FiDownload className="mr-2" /> Tải mẫu
           </button>
           
           <label
             htmlFor="excel-upload"
-            className={`bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-md flex items-center cursor-pointer ${isImporting ? 'opacity-50 cursor-not-allowed' : ''}`}
+            className={`bg-amber-500 hover:bg-amber-600 text-white font-semibold px-4 py-2 rounded-lg flex items-center cursor-pointer transition-colors ${isImporting ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             <FiUpload className="mr-2" /> {isImporting ? 'Đang import...' : 'Import Excel'}
           </label>
           
           <Link
             href="/admin/employees/add"
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg flex items-center transition-colors"
           >
-            <FiPlusCircle className="mr-2" /> Thêm nhân viên
+            <FiPlusCircle className="mr-2" /> Thêm mới
           </Link>
         </div>
       </div>
-      
-      <div className="bg-white p-4 rounded-lg shadow">
-        <div className="mb-4">
-          <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-1">
-            Tìm kiếm
-          </label>
-          <input
-            type="text"
-            id="search"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Tìm theo mã, tên, email, SĐT, cửa hàng..."
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-          />
-        </div>
-        
-        {isLoading ? (
-          <div className="flex justify-center py-10">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-          </div>
-        ) : (
-          <>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Nhân viên
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Mã nhân viên
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Cửa hàng
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Số máy đã bán
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Lượt quay
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Ngày tạo
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Thao tác
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredEmployees.length > 0 ? (
-                    filteredEmployees.map((employee) => (
-                      <tr key={employee._id}>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="flex-shrink-0 h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
-                              <span className="text-blue-600 font-bold">
-                                {employee.name.charAt(0).toUpperCase()}
-                              </span>
-                            </div>
-                            <div className="ml-4">
-                              <div className="text-sm font-medium text-gray-900">
-                                {employee.name}
-                              </div>
-                              <div className="text-sm text-gray-500">
-                                {employee.email} / {employee.phone}
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {employee.employeeCode}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {employee.codeShop || 'N/A'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                          {employee.machinesSold}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                          {employee.remainingSpins} / {employee.totalSpins}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(employee.createdAt).toLocaleDateString('vi-VN')}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                           <Link
-                            href={`/admin/employees/edit/${employee._id}`}
-                            className="text-blue-600 hover:text-blue-900 inline-flex items-center"
-                          >
-                            <FiEdit className="h-5 w-5" />
-                          </Link>
-                          <button
-                            onClick={() => handleDeleteEmployee(employee._id, employee.name)}
-                            className="text-red-600 hover:text-red-900 inline-flex items-center"
-                          >
-                            <FiTrash2 className="h-5 w-5" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
-                        {searchTerm 
-                          ? 'Không tìm thấy nhân viên phù hợp'
-                          : 'Chưa có nhân viên nào'}
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-            {pagination.totalPages > 1 && (
-              <div className="py-2">
-                <Pagination
-                  currentPage={pagination.page}
-                  totalPages={pagination.totalPages}
-                  onPageChange={handlePageChange}
-                  totalItems={pagination.totalItems}
-                  itemsPerPage={pagination.limit}
+
+    <div className="mb-4 p-4 bg-gray-50 rounded-lg shadow-sm">
+        <div className="flex items-center space-x-4">
+            <div className="relative flex-grow">
+                <input
+                    type="text"
+                    placeholder="Tìm theo mã, tên, email, SĐT..."
+                    value={searchKeyword}
+                    onChange={(e) => setSearchKeyword(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
-              </div>
-            )}
-          </>
-        )}
-      </div>
+                <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            </div>
+            <div className="relative">
+                <input
+                    type="number"
+                    placeholder="Số máy bán"
+                    value={searchMachinesSold === null ? '' : searchMachinesSold}
+                    onChange={(e) => setSearchMachinesSold(e.target.value === '' ? null : Number(e.target.value))}
+                    onKeyDown={handleKeyDown}
+                    className="w-40 pl-4 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                />
+            </div>
+            <button
+                onClick={handleSearch}
+                className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition-colors flex items-center"
+            >
+                <FiSearch className="mr-2"/> Tìm kiếm
+            </button>
+            <button
+                onClick={handleReset}
+                className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
+            >
+                Đặt lại
+            </button>
+        </div>
     </div>
+      
+    {selectedIds.length > 0 && (
+        <div className="flex justify-start items-center mb-4 -mt-2">
+            <span className="ml-1 text-sm font-medium text-gray-700">{selectedIds.length} nhân viên được chọn</span>
+        </div>
+     )}
+
+    <div className="overflow-x-auto bg-white rounded-lg shadow">
+      <table className="min-w-full">
+        <thead className="bg-gray-100">
+          <tr>
+            <th scope="col" className="p-4">
+              <input 
+                type="checkbox"
+                ref={selectAllCheckboxRef}
+                checked={selectedIds.length === employees.length && employees.length > 0}
+                onChange={handleSelectAll}
+                className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+              />
+            </th>
+            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Mã NV</th>
+            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Tên Nhân viên</th>
+            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Email</th>
+            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Điện thoại</th>
+            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Mã Shop</th>
+            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Máy đã bán</th>
+            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Lượt quay còn lại</th>
+            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Tổng lượt quay</th>
+            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Ngày tạo</th>
+            <th scope="col" className="px-6 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+              Hành động
+            </th>
+          </tr>
+        </thead>
+        <tbody className="bg-white">
+          {isLoading ? (
+            <tr>
+              <td colSpan={11} className="text-center py-10">
+                <div className="flex justify-center items-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
+                    <span className="ml-4">Đang tải dữ liệu...</span>
+                </div>
+              </td>
+            </tr>
+          ) : employees.length === 0 ? (
+            <tr>
+              <td colSpan={11} className="text-center py-10 text-gray-500">
+                Không tìm thấy nhân viên nào.
+              </td>
+            </tr>
+          ) : (
+            employees.map((employee) => (
+              <tr 
+                key={employee._id}
+                onDoubleClick={() => handleRowDoubleClick(employee._id)}
+                className={`border-b border-gray-200 hover:bg-indigo-50 cursor-pointer ${selectedIds.includes(employee._id) ? 'bg-indigo-100' : ''}`}
+              >
+                <td className="p-4">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.includes(employee._id)}
+                    onChange={(e) => handleSelectOne(e, employee._id)}
+                    className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                  />
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{employee.employeeCode}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{employee.name}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{employee.email}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{employee.phone}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{employee.codeShop}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-500">{employee.machinesSold}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-center text-green-600 font-semibold">{employee.remainingSpins}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-center text-blue-600 font-semibold">{employee.totalSpins}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {new Date(employee.createdAt).toLocaleDateString('vi-VN')}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                  <div className="flex items-center justify-center space-x-4">
+                    <Link href={`/admin/employees/edit/${employee._id}`} className="text-indigo-600 hover:text-indigo-900">
+                      <FiEdit title="Chỉnh sửa"/>
+                    </Link>
+                    <button
+                      onClick={() => handleDeleteEmployee(employee._id, employee.name)}
+                      className="text-red-600 hover:text-red-900"
+                    >
+                      <FiTrash2 title="Xóa"/>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+    </div>
+    
+    {pagination && pagination.totalPages > 1 && (
+      <Pagination
+        currentPage={pagination.page}
+        totalPages={pagination.totalPages}
+        onPageChange={handlePageChange}
+      />
+    )}
+  </div>
   );
 } 
