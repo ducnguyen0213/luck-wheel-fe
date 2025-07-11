@@ -6,6 +6,7 @@ import { FiEdit, FiPlusCircle, FiUpload, FiDownload, FiTrash2, FiAlertTriangle }
 import Link from 'next/link';
 
 import { getAllEmployees, importEmployeesFromExcel, deleteEmployee, deleteAllEmployees } from '@/lib/api';
+import Pagination from '@/components/Pagination';
 
 interface Employee {
   _id: string;
@@ -20,23 +21,44 @@ interface Employee {
   createdAt: string;
 }
 
+interface PaginationData {
+  page: number;
+  limit: number;
+  totalPages: number;
+  totalItems: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+}
+
 export default function EmployeesPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isImporting, setIsImporting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [pagination, setPagination] = useState<PaginationData>({
+    page: 1,
+    limit: 10,
+    totalPages: 1,
+    totalItems: 0,
+    hasNextPage: false,
+    hasPrevPage: false
+  });
   
   useEffect(() => {
-    fetchEmployees();
+    fetchEmployees(pagination.page);
   }, []);
   
-  const fetchEmployees = async () => {
+  const fetchEmployees = async (page = 1) => {
     try {
       setIsLoading(true);
-      const response = await getAllEmployees();
-      if (Array.isArray(response.data)) {
-        setEmployees(response.data);
+      const response = await getAllEmployees(page, pagination.limit);
+      
+      if (response.data.success) {
+        setEmployees(response.data.data);
+        if (response.data.pagination) {
+          setPagination(response.data.pagination);
+        }
       } else {
         toast.error('Lỗi: Dữ liệu nhân viên trả về không đúng định dạng.');
         setEmployees([]);
@@ -46,6 +68,10 @@ export default function EmployeesPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handlePageChange = (newPage: number) => {
+    fetchEmployees(newPage);
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -96,7 +122,8 @@ export default function EmployeesPage() {
       try {
         await deleteEmployee(id);
         toast.success(`Đã xóa nhân viên ${name}`);
-        setEmployees(employees.filter(employee => employee._id !== id));
+        // Tải lại dữ liệu trang hiện tại để cập nhật tổng số item
+        fetchEmployees(pagination.page);
       } catch (error: any) {
         toast.error(error.response?.data?.message || 'Lỗi khi xóa nhân viên');
       }
@@ -109,11 +136,11 @@ export default function EmployeesPage() {
       try {
         await deleteAllEmployees();
         toast.success('Đã xóa tất cả nhân viên.');
-        setEmployees([]); // Clear the list on UI
+        fetchEmployees(1); // Tải lại trang đầu tiên
       } catch (error: any) {
         toast.error(error.response?.data?.message || 'Lỗi khi xóa tất cả nhân viên.');
       }
-    } else if (confirmation !== null) { // User typed something but it was wrong
+    } else if (confirmation !== null) { 
       toast.warn('Xác nhận không hợp lệ. Hành động đã bị hủy.');
     }
   };
@@ -285,6 +312,17 @@ export default function EmployeesPage() {
                 </tbody>
               </table>
             </div>
+            {pagination.totalPages > 1 && (
+              <div className="py-2">
+                <Pagination
+                  currentPage={pagination.page}
+                  totalPages={pagination.totalPages}
+                  onPageChange={handlePageChange}
+                  totalItems={pagination.totalItems}
+                  itemsPerPage={pagination.limit}
+                />
+              </div>
+            )}
           </>
         )}
       </div>
