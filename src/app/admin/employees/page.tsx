@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { toast } from 'react-toastify';
-import { FiEdit, FiPlusCircle, FiUpload, FiDownload } from 'react-icons/fi';
+import { FiEdit, FiPlusCircle, FiUpload, FiDownload, FiTrash2, FiAlertTriangle } from 'react-icons/fi';
 import Link from 'next/link';
 
-import { getAllEmployees, importEmployeesFromExcel } from '@/lib/api';
+import { getAllEmployees, importEmployeesFromExcel, deleteEmployee, deleteAllEmployees } from '@/lib/api';
 
 interface Employee {
   _id: string;
@@ -55,10 +55,8 @@ export default function EmployeesPage() {
       return;
     }
 
-    // Kiểm tra định dạng file
     if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
       toast.error('Vui lòng chọn file Excel có định dạng .xlsx hoặc .xls');
-      // Reset input file
       if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
@@ -71,7 +69,6 @@ export default function EmployeesPage() {
         const { total, created, updated, failed } = response.data.results;
         toast.success(`Import thành công: ${total} nhân viên (Tạo mới: ${created}, Cập nhật: ${updated}, Lỗi: ${failed})`);
         
-        // Tải lại danh sách nhân viên
         fetchEmployees();
       } else {
         toast.error('Có lỗi xảy ra khi import nhân viên');
@@ -80,22 +77,45 @@ export default function EmployeesPage() {
       toast.error(error.response?.data?.message || 'Lỗi khi import nhân viên');
     } finally {
       setIsImporting(false);
-      // Reset input file
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
-  // Tạo template Excel mẫu
   const handleDownloadTemplate = () => {
-    // Tạo một URL tới mẫu Excel trong thư mục public
     const templateUrl = '/templates/mau_nhap_nhan_vien.xlsx';
-    // Tạo một thẻ a ẩn để tải xuống
     const a = document.createElement('a');
     a.href = templateUrl;
     a.download = 'mau_nhap_nhan_vien.xlsx';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+  };
+
+  const handleDeleteEmployee = async (id: string, name: string) => {
+    if (window.confirm(`Bạn có chắc chắn muốn xóa nhân viên "${name}" không?`)) {
+      try {
+        await deleteEmployee(id);
+        toast.success(`Đã xóa nhân viên ${name}`);
+        setEmployees(employees.filter(employee => employee._id !== id));
+      } catch (error: any) {
+        toast.error(error.response?.data?.message || 'Lỗi khi xóa nhân viên');
+      }
+    }
+  };
+
+  const handleDeleteAllEmployees = async () => {
+    const confirmation = window.prompt('Hành động này không thể hoàn tác. Để xác nhận xóa TẤT CẢ nhân viên, vui lòng nhập "xóa tất cả" vào ô bên dưới:');
+    if (confirmation === 'xóa tất cả') {
+      try {
+        await deleteAllEmployees();
+        toast.success('Đã xóa tất cả nhân viên.');
+        setEmployees([]); // Clear the list on UI
+      } catch (error: any) {
+        toast.error(error.response?.data?.message || 'Lỗi khi xóa tất cả nhân viên.');
+      }
+    } else if (confirmation !== null) { // User typed something but it was wrong
+      toast.warn('Xác nhận không hợp lệ. Hành động đã bị hủy.');
+    }
   };
   
   const filteredEmployees = searchTerm.trim() === '' 
@@ -113,6 +133,14 @@ export default function EmployeesPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Quản lý Nhân viên</h1>
         <div className="flex space-x-2">
+           <button
+            onClick={handleDeleteAllEmployees}
+            disabled={employees.length === 0}
+            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md flex items-center disabled:opacity-50"
+          >
+            <FiAlertTriangle className="mr-2" /> Xóa tất cả
+          </button>
+
           <input
             type="file"
             ref={fileInputRef}
@@ -229,13 +257,19 @@ export default function EmployeesPage() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {new Date(employee.createdAt).toLocaleDateString('vi-VN')}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <Link
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                           <Link
                             href={`/admin/employees/edit/${employee._id}`}
-                            className="text-blue-600 hover:text-blue-900"
+                            className="text-blue-600 hover:text-blue-900 inline-flex items-center"
                           >
                             <FiEdit className="h-5 w-5" />
                           </Link>
+                          <button
+                            onClick={() => handleDeleteEmployee(employee._id, employee.name)}
+                            className="text-red-600 hover:text-red-900 inline-flex items-center"
+                          >
+                            <FiTrash2 className="h-5 w-5" />
+                          </button>
                         </td>
                       </tr>
                     ))

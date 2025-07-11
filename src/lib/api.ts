@@ -234,6 +234,14 @@ export const updateEmployee = async (id: string, employeeData: any) => {
   return api.put(`/employees/${id}`, employeeData);
 };
 
+export const deleteEmployee = async (id: string) => {
+  return api.delete(`/employees/${id}`);
+};
+
+export const deleteAllEmployees = async () => {
+  return api.delete('/employees');
+};
+
 export const verifyEmployeeCode = async (employeeCode: string) => {
   return api.get(`/employees/verify/${employeeCode}`);
 };
